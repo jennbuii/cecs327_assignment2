@@ -3,6 +3,7 @@ import queue
 import sys
 import json
 import time
+import struct
 from socket import AF_INET, SOCK_STREAM, socket
 from datetime import datetime
 
@@ -22,6 +23,25 @@ class ParkingLot:
             "G4": {"capacity": 50, "occupied": 10, "free": 40}
         }
         self.reservations = {} # (lot_id, plate) -> timestamp
+
+def framing_read(conn): #reads a framed message from the connection [4 byte length header followed by message bytes]
+    header = b""
+    while len(header) < 4:
+        data = conn.recv(4 - len(header))
+        if not data:
+            return None
+        header += data
+    message_length = struct.unpack("!I", header)[0]
+    message = b""
+    while len(message) < message_length:
+        data = conn.recv(message_length - len(message))
+        if not data:
+            return None
+        message += data
+    return message
+
+def framing_write(conn, message):
+    conn.sendall(struct.pack("!I", len(message)) + message)
 
 def command(cmd, state): #handles commands from clients, returns response string
     if not cmd:
@@ -90,6 +110,69 @@ def command(cmd, state): #handles commands from clients, returns response string
         return "PONG\n"
     return "ERROR invalid command syntax\n"
 
+def rpc_dispatcher(req, state):
+    # request: {"rpcId": uint32, "method": str, "args": any[]}
+    # reply: {rpcId, result, error}
+    rpcId = req.get("rpcId")
+    method = req.get("method")
+    args = req.get("args", [])
+
+    reply = {"rpcId": rpcId, "result": None, "error": None}
+    if method == "getLots":
+        result = command("LOTS", state).strip()
+        reply["result"] = json.loads(result)
+    elif method == "getAvailability":
+        if len(args) < 1:
+            reply["error"] = "ERROR missing lot_id"
+        else:
+            lot_id = args[0]
+            result = command(f"AVAIL {lot_id}", state).strip()
+            if result.startswith("ERROR"):
+                reply["error"] = result
+            else:
+                reply["result"] = int(result)
+    elif method == "reserve":
+        if len(args) < 2:
+            reply["error"] = "ERROR missing lot_id, plate"
+        else:
+            lot_id = args[0]
+            plate = args[1]
+            result = command(f"RESERVE {lot_id} {plate}", state).strip()
+            if result  == "OK":
+                reply["result"] = True
+            else:
+                reply["result"] = False
+                reply["error"] = result
+    elif method == "cancel":
+        if len(args) < 2:
+            reply["error"] = "ERROR missing lot_id, plate"
+        else:
+            lot_id = args[0]
+            plate = args[1]
+            result = command(f"CANCEL {lot_id} {plate}", state).strip()
+            if result == "OK":
+                reply["result"] = True
+            else:
+                reply["result"] = False
+                reply["error"] = result
+    else:
+        reply["error"] = "ERROR invalid method"
+    return reply
+
+def rpc_handle_conn(conn, addr, state):
+    try:
+        while True:
+            message = framing_read(conn)
+            if message is None:
+                break
+            req = json.loads(message.decode("utf-8"))
+            reply = rpc_dispatcher(req, state)
+            reply_message = json.dumps(reply).encode("utf-8")
+            framing_write(conn, reply_message)
+    except ConnectionError:
+        pass
+    conn.close()
+
 def handle_conn(conn, addr, state): #handles a single client connection
     fin = conn.makefile("rb")
     fout = conn.makefile("wb")
@@ -107,9 +190,13 @@ def handle_conn(conn, addr, state): #handles a single client connection
     conn.close()
 
 def work(id, worker_queue, state): # worker thread function, processes tasks from the worker queue
-    while True:
-        conn, addr = worker_queue.get()
-        handle_conn(conn, addr, state)
+        while True:
+            conn, addr = worker_queue.get()
+            try:
+                #handle_conn(conn, addr, state)
+                rpc_handle_conn(conn, addr, state)
+            finally:
+                worker_queue.task_done()
 
 def accept_conn(app_port, worker_queue): # accepts incoming connections and puts them in the worker queue
     s = socket(AF_INET, SOCK_STREAM)
@@ -137,7 +224,7 @@ def cleanup_reservations(state, expiration_event): # background thread function,
         time.sleep(CLEANUP_INTERVAL_SECONDS)
 
 def main():
-    if len(sys.argv) <= 2 or  len(sys.argv) >= 3:
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
         print("Usage: python parking_server.py <app_port> [expiration_seconds]")
         return
     app_port = int(sys.argv[1])
