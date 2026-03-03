@@ -38,7 +38,7 @@ def main():
             print(f"event connect failed: {ack}")
             return
 
-        print("listening for events (Ctrl+C to stop)...")
+        print("listening for events (Ctrl+C to stop)")
         while True:
             line = event_stream.readline()
             if not line:
@@ -49,7 +49,7 @@ def main():
     except (ConnectionError, rpcTimeoutError) as error:
         print(f"ERROR {error}")
     except KeyboardInterrupt:
-        print("stopping...")
+        print("stopping subscriber")
     finally:
         if sub_id is not None:
             try:
