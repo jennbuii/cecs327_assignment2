@@ -4,7 +4,7 @@ import sys
 import json
 import time
 import struct
-from socket import AF_INET, SOCK_STREAM, socket
+from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, socket
 from datetime import datetime
 
 HOST = "127.0.0.1"
@@ -424,7 +424,7 @@ def work(id, worker_queue, state, handler): # worker thread function, processes 
 
 def accept_conn(listen_port, worker_queue, backlog): # accepts incoming connections and puts them in the worker queue
     s = socket(AF_INET, SOCK_STREAM)
-    s.setsockopt(1, 2, 1)
+    s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
     s.bind((HOST, listen_port))
     s.listen(backlog)
     while True:

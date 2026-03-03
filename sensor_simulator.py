@@ -36,7 +36,7 @@ def main():
         while time.time() < end_time:
             lot_id = random.choice(lot_ids)
             delta = random.choice([1, -1])
-            stream.write(f"UPDATE {lot_id} {delta}\\n".encode("utf-8"))
+            stream.write(f"UPDATE {lot_id} {delta}\n".encode("utf-8"))
             stream.flush()
             reply = stream.readline().decode("utf-8").strip()
             if reply == "QUEUED":

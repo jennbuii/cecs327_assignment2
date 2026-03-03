@@ -106,7 +106,7 @@ def main():
                 elif cmd == "avail" and len(input_parts) == 2:
                     lot_id = input_parts[1]
                     result, error = client.getAvailability(lot_id)
-                    if result:
+                    if result is not None:
                         print(result)
                     else:
                         print(error)
