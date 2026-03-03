@@ -11,18 +11,28 @@ HOST = "127.0.0.1"
 DEFAULT_EXPIRATION_SECONDS = 300
 CLEANUP_INTERVAL_SECONDS = 5
 
+def logger(msg):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open("serverlogs.log", "a", encoding="utf-8") as f:
+        f.write(f"{timestamp} {msg}\n")
+
+def read_lots(config):
+    lots = {}
+    for lot in config.get("lots", []):
+        lot_id = lot["id"]
+        capacity = lot["capacity"]
+        occupied = lot["occupied"]
+        free = capacity - occupied
+        lots[lot_id] = {"capacity": capacity, "occupied": occupied, "free": free}
+    return lots
+
 class ParkingLot:
-    def __init__(self, expiration_seconds):
+    def __init__(self, expiration_seconds, config_lots={}):
         self.lock = threading.Lock()
         self.expiration_seconds = expiration_seconds
         # lots -> {id, capacity, occupied, free}
-        self.lots = {
-            "G1": {"capacity": 100, "occupied": 26, "free": 74},
-            "G2": {"capacity": 150, "occupied": 45, "free": 105},
-            "G3": {"capacity": 200, "occupied": 120, "free": 80},
-            "G4": {"capacity": 50, "occupied": 10, "free": 40}
-        }
-        self.reservations = {} # (lot_id, plate) -> timestamp
+        self.lots = config_lots
+        self.reservations = {} 
 
 def framing_read(conn): #reads a framed message from the connection [4 byte length header followed by message bytes]
     header = b""
@@ -60,6 +70,8 @@ def command(cmd, state): #handles commands from clients, returns response string
                     "occupied": lot["occupied"],
                     "free": lot["free"]
                 })
+            msg = json.dumps({"event_type": "LOTS"})
+            logger(msg)
             return json.dumps(lots_info) + "\n"
     # AVAIL <lot_id> - returns integer number of available spaces in the lot
     elif cmd_name == "AVAIL":
@@ -70,6 +82,8 @@ def command(cmd, state): #handles commands from clients, returns response string
             lot_id = cmd_parts[1]
             if lot_id not in state.lots:
                 return "ERROR invalid lot_id\n"
+            msg = json.dumps({"event_type": "AVAIL", "lot_id": lot_id})
+            logger(msg)
             return str(state.lots[lot_id]["free"]) + "\n"
     # RESERVE <lot_id> <plate> - reserves a space, returns OK, FULL, or EXISTS
     elif cmd_name == "RESERVE":
@@ -89,6 +103,8 @@ def command(cmd, state): #handles commands from clients, returns response string
             state.reservations[(lot_id, plate)] = expiration
             state.lots[lot_id]["occupied"] += 1
             state.lots[lot_id]["free"] -= 1
+            msg = json.dumps({"event_type": "RESERVE", "lot_id": lot_id, "plate": plate})
+            logger(msg)
             return "OK\n"
     # CANCEL <lot_id> <plate> - cancels a reservation, returns OK or NOT_FOUND
     elif cmd_name == "CANCEL": 
@@ -105,11 +121,17 @@ def command(cmd, state): #handles commands from clients, returns response string
             del state.reservations[(lot_id, plate)]
             state.lots[lot_id]["occupied"] -= 1
             state.lots[lot_id]["free"] += 1
+            msg = json.dumps({"event_type": "CANCEL", "lot_id": lot_id, "plate": plate})
+            logger(msg)
             return "OK\n"
     elif cmd_name == "PING":
+        msg = "PING"
+        logger(msg)
         return "PONG\n"
     return "ERROR invalid command syntax\n"
 
+# RPC dispatcher and connection handler for RPC mode
+# RPC skeleton
 def rpc_dispatcher(req, state):
     # request: {"rpcId": uint32, "method": str, "args": any[]}
     # reply: {rpcId, result, error}
@@ -159,6 +181,7 @@ def rpc_dispatcher(req, state):
         reply["error"] = "ERROR invalid method"
     return reply
 
+# RPC skeleton connection handler
 def rpc_handle_conn(conn, addr, state):
     try:
         while True:
@@ -189,14 +212,13 @@ def handle_conn(conn, addr, state): #handles a single client connection
     fout.close()
     conn.close()
 
-def work(id, worker_queue, state): # worker thread function, processes tasks from the worker queue
-        while True:
-            conn, addr = worker_queue.get()
-            try:
-                #handle_conn(conn, addr, state)
-                rpc_handle_conn(conn, addr, state)
-            finally:
-                worker_queue.task_done()
+def work(id, worker_queue, state, handler): # worker thread function, processes tasks from the worker queue
+    while True:
+        conn, addr = worker_queue.get()
+        try:
+            handler(conn, addr, state) # rpc_handle_conn or handle_conn depending on mode
+        finally:
+            worker_queue.task_done()
 
 def accept_conn(app_port, worker_queue): # accepts incoming connections and puts them in the worker queue
     s = socket(AF_INET, SOCK_STREAM)
@@ -206,7 +228,7 @@ def accept_conn(app_port, worker_queue): # accepts incoming connections and puts
         conn, addr = s.accept()
         worker_queue.put((conn, addr))
     
-def cleanup(state):
+def cleanup(state): # removes expired reservations from the state
     current_time = time.time()
     expired = []
     for (lot_id, plate), expiration in state.reservations.items():
@@ -225,23 +247,34 @@ def cleanup_reservations(state, expiration_event): # background thread function,
 
 def main():
     if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python parking_server.py <app_port> [expiration_seconds]")
+        print("Usage: python server.py <config.json> [expiration_seconds]")
         return
-    app_port = int(sys.argv[1])
-    expiration_seconds = DEFAULT_EXPIRATION_SECONDS
+    
+    config_file = sys.argv[1]
+    with open(config_file, "r", encoding="utf-8") as f:
+        config = json.load(f)
+
+    app_port = int(config["app_port"])
+    thread_pool_size = config.get("thread_pool_size")
+    expiration_seconds = int(config.get("expiration_seconds", DEFAULT_EXPIRATION_SECONDS))
     if len(sys.argv) == 3:
         expiration_seconds = int(sys.argv[2])
+    mode = config.get("mode", "rpc")
+    if mode == "rpc":
+        handler = rpc_handle_conn
+    elif mode == "text":
+        handler = handle_conn
+    config_lots = read_lots(config)
     
     print("Starting Parking Server...")
-    state = ParkingLot(expiration_seconds)
+    state = ParkingLot(expiration_seconds, config_lots)
     expiration_event = threading.Event()
     cleanup_thread = threading.Thread(target=cleanup_reservations, args=(state, expiration_event), daemon=True)
     cleanup_thread.start()
 
-    num_workers = 8
     worker_queue = queue.Queue()
-    for id in range(num_workers):
-        thread = threading.Thread(target=work, args=(id, worker_queue, state), daemon=True)
+    for id in range(thread_pool_size): 
+        thread = threading.Thread(target=work, args=(id, worker_queue, state, handler), daemon=True)
         thread.start()
 
     accept_conn(app_port, worker_queue)

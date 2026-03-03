@@ -1,0 +1,12 @@
+{
+    "app_port": 1234,
+    "thread_pool_size": 8,
+    "expiration_seconds": 30,
+    "lots": [
+        {"id": "G1", "capacity": 100, "occupied": 26},
+        {"id": "G2", "capacity": 150, "occupied": 45},
+        {"id": "G3", "capacity": 200, "occupied": 120},
+        {"id": "G4", "capacity": 50, "occupied": 10}
+    ],
+    "mode": "rpc"
+}

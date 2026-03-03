@@ -1,0 +1,19 @@
+2026-03-02 22:52:36 PING
+2026-03-02 22:52:44 {"event_type": "LOTS"}
+2026-03-02 22:52:53 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 22:53:07 {"event_type": "RESERVE", "lot_id": "G1", "plate": "AAA111"}
+2026-03-02 22:53:12 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 22:53:48 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 22:54:06 {"event_type": "RESERVE", "lot_id": "G1", "plate": "AAA111"}
+2026-03-02 22:54:13 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 22:54:20 {"event_type": "CANCEL", "lot_id": "G1", "plate": "AAA111"}
+2026-03-02 22:54:46 PING
+2026-03-02 22:55:00 {"event_type": "RESERVE", "lot_id": "G1", "plate": "XXX222"}
+2026-03-02 22:55:03 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 22:55:08 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 23:14:52 {"event_type": "LOTS"}
+2026-03-02 23:14:58 {"event_type": "AVAIL", "lot_id": "G1"}
+2026-03-02 23:15:08 {"event_type": "RESERVE", "lot_id": "G1", "plate": "AAA111"}
+2026-03-02 23:15:17 {"event_type": "CANCEL", "lot_id": "G1", "plate": "AAA111"}
+2026-03-02 23:16:07 {"event_type": "LOTS"}
+2026-03-02 23:16:09 {"event_type": "LOTS"}
