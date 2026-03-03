@@ -29,9 +29,8 @@ def main():
         print(f"subscribed: lot={lot_id} subId={sub_id}")
 
         event_sock = socket.create_connection((host, event_port))
-        event_stream = event_sock.makefile("rwb")
-        event_stream.write(f"SUB {sub_id}\\n".encode("utf-8"))
-        event_stream.flush()
+        event_sock.sendall(f"SUB {sub_id}\n".encode("utf-8"))
+        event_stream = event_sock.makefile("rb")
 
         ack = event_stream.readline().decode("utf-8").strip()
         if ack != "OK":
