@@ -71,6 +71,14 @@ class RPCClient:
     def cancel(self, lot_id, plate):
         reply = self.call("cancel", [lot_id, plate])
         return reply.get("result"), reply.get("error")
+
+    def subscribe(self, lot_id):
+        reply = self.call("subscribe", [lot_id])
+        return reply.get("result"), reply.get("error")
+
+    def unsubscribe(self, sub_id):
+        reply = self.call("unsubscribe", [sub_id])
+        return reply.get("result"), reply.get("error")
             
 def main():
     if len(sys.argv) < 3 or len(sys.argv) > 4:
@@ -114,6 +122,20 @@ def main():
                     lot_id = input_parts[1]
                     plate = input_parts[2]
                     result, error = client.cancel(lot_id, plate)
+                    if result:
+                        print(result)
+                    else:
+                        print(error)
+                elif cmd == "subscribe" and len(input_parts) == 2:
+                    lot_id = input_parts[1]
+                    result, error = client.subscribe(lot_id)
+                    if result is not None:
+                        print(f"subId={result}")
+                    else:
+                        print(error)
+                elif cmd == "unsubscribe" and len(input_parts) == 2:
+                    sub_id = input_parts[1]
+                    result, error = client.unsubscribe(sub_id)
                     if result:
                         print(result)
                     else:

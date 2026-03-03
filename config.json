@@ -1,6 +1,13 @@
 {
     "app_port": 1234,
+    "sensor_port": 1235,
+    "event_port": 1236,
+    "backlog": 100,
     "thread_pool_size": 8,
+    "sensor_worker_threads": 2,
+    "event_worker_threads": 4,
+    "sensor_queue_size": 2000,
+    "subscriber_queue_size": 100,
     "expiration_seconds": 30,
     "lots": [
         {"id": "G1", "capacity": 100, "occupied": 26},
