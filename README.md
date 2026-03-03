@@ -61,3 +61,22 @@ Additional configurations:
 
 ## Back-Pressure Policy
 ...
+
+## Python Virtual Environment Setup
+
+1. Create venv
+- python -m venv .venv
+
+2. Activate
+- macOS/Linux: source .venv/bin/activate
+- Windows: .venv\Scripts\activate
+
+3. Install
+- pip install -r requirements.txt
+
+4. Run server + clients
+
+On a separate terminal for the server and client, both with venv activated:
+
+- Server: python server.py <config.json> [expiration_seconds]
+- Client: python rpc_client.py <host> <port> [timeout_seconds]
