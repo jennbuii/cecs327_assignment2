@@ -256,7 +256,7 @@ def parse_args():
     parser.add_argument("--sensor-port", type=int, default=1235)
     parser.add_argument("--duration", type=int, default=30)
     parser.add_argument("--workers", default="1,4,8,16")
-    parser.add_argument("--timeout", type=float, default=5.0)
+    parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--lot", default="G1")
     parser.add_argument("--sensor-lots", default="G1,G2,G3,G4")
     parser.add_argument("--sensor-rate", type=float, default=0.0, help="updates/sec per lot (0 = off)")

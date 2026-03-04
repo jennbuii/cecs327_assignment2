@@ -3,7 +3,7 @@
     "sensor_port": 1235,
     "event_port": 1236,
     "backlog": 100,
-    "thread_pool_size": 8,
+    "thread_pool_size": 16,
     "sensor_worker_threads": 2,
     "event_worker_threads": 4,
     "sensor_queue_size": 2000,
