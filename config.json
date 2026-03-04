@@ -8,7 +8,7 @@
     "event_worker_threads": 4,
     "sensor_queue_size": 2000,
     "subscriber_queue_size": 100,
-    "expiration_seconds": 30,
+    "expiration_seconds": 300,
     "lots": [
         {"id": "G1", "capacity": 100, "occupied": 26},
         {"id": "G2", "capacity": 150, "occupied": 45},
