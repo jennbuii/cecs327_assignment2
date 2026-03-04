@@ -5,7 +5,7 @@ from rpc_client import RPCClient, rpcTimeoutError
 
 
 def main():
-    # Part D helper: subscribes via RPC, then listens on event stream connection
+    # Part D:subscribes via RPC, then listens on event stream connection
     if len(sys.argv) < 5 or len(sys.argv) > 6:
         print("Usage: python subscriber_client.py <host> <rpc_port> <event_port> <lot_id> [timeout_seconds]")
         return
