@@ -1,7 +1,6 @@
 import sys
 import json
 import struct
-from socket import AF_INET, SOCK_STREAM, socket
 import socket
 
 def framing_read(conn): # reads a framed message from the connection [4 byte length header followed by message bytes]

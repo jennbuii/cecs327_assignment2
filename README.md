@@ -39,7 +39,7 @@ Wire Format: (JSON)
 
 ## Timeout Policy
 
-Clients enforce per-RPC timeout and will stop waiting after the default of 5 seconds if there is no response from the server. If a timeout occurs, rpcTimeoutError is raised. The [timeout_seconds] are configurable as users can choose to override the default timeout_seconds when starting the terminal.
+Clients enforce per-RPC timeout and will stop waiting after the default of 10 seconds if there is no response from the server. If a timeout occurs, rpcTimeoutError is raised. The [timeout_seconds] are configurable as users can choose to override the default timeout_seconds when starting the terminal.
 
 ## Thread Model
 **Bounded Thread Pool**
@@ -57,10 +57,19 @@ Additional configurations:
 - timeout_seconds (timeout policy) can be changed via the terminal when starting rpc_client.py
 
 ## Pub/Sub Design
-...
+
+Uses 3 separate TCP ports (RPC: 1234, Sensor: 1235, Event: 1236) to prevent event delivery from blocking normal requests.
+
+- Clients call `subscribe(lotId)` via RPC to get a `subId`
+- Clients connect to event port and send `SUB <subId>` to receive events
+- Server pushes `EVENT <lotId> <free> <timestamp>` when occupancy changes
+- Each subscriber gets a bounded queue up to 100 events and runs on dedicated threads
 
 ## Back-Pressure Policy
-...
+
+**Disconnect on overflow**
+
+Each subscriber has a queue up to 100 events. If the queue fills, the server immediately disconnects that subscriber and logs the event. This prevents slow subscribers from affecting fast ones or consuming excessive memory.
 
 ## Python Virtual Environment Setup
 
